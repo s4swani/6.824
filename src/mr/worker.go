@@ -4,6 +4,8 @@ import "fmt"
 import "log"
 import "net/rpc"
 import "hash/fnv"
+import "time"
+import "math/rand"
 
 
 //
@@ -24,6 +26,28 @@ func ihash(key string) int {
 	return int(h.Sum32() & 0x7fffffff)
 }
 
+//
+// Returns a unique 64-bit int WorkerId
+//
+func GetId() WorkerId {
+	
+	x := rand.NewSource(time.Now().UnixNano())
+	y := rand.New(x)
+
+	return WorkerId(y.Intn(time.Now().Nanosecond()))
+}
+
+type WorkerInfo struct {
+
+	MyWorkerId WorkerId
+
+	TaskId int
+
+	TaskType int
+
+	TaskStatus int
+	
+}
 
 //
 // main/mrworker.go calls this function.
@@ -31,10 +55,9 @@ func ihash(key string) int {
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
-	// Your worker implementation here.
+	workerId := GetId()
 
-	// uncomment to send the Example RPC to the coordinator.
-	// CallExample()
+	CallAssignTask(workerId)
 
 }
 
@@ -43,25 +66,25 @@ func Worker(mapf func(string, string) []KeyValue,
 //
 // the RPC argument and reply types are defined in rpc.go.
 //
-func CallExample() {
+func CallAssignTask(workerId WorkerId) {
 
 	// declare an argument structure.
-	args := ExampleArgs{}
+	args := AssignTaskArgs{}
 
 	// fill in the argument(s).
-	args.X = 99
+	args.CurrentWorkerId = workerId
 
 	// declare a reply structure.
-	reply := ExampleReply{}
+	reply := AssignTaskReply{}
 
 	// send the RPC request, wait for the reply.
-	// the "Coordinator.Example" tells the
+	// the "Coordinator.AssignTask" tells the
 	// receiving server that we'd like to call
-	// the Example() method of struct Coordinator.
-	ok := call("Coordinator.Example", &args, &reply)
+	// the AssignTask() method of struct Coordinator.
+	ok := call("Coordinator.AssignTask", &args, &reply)
+	
 	if ok {
-		// reply.Y should be 100.
-		fmt.Printf("reply.Y %v\n", reply.Y)
+		fmt.Printf("Task Details %v\n", reply)
 	} else {
 		fmt.Printf("call failed!\n")
 	}
