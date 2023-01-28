@@ -23,12 +23,13 @@ const (
 	Reduce = 1
 
 	//
-	// Reply Status
+	// Reply Statuses
 	//
 	SafelyExit = -1
 	MoreTasks = 0
 	WaitForMoreTasks = 1
 	TaskAssigned = 2
+	StaleTaskCompletion = 3
 )
 
 type WorkerId int 
@@ -58,8 +59,10 @@ type AssignTaskReply struct {
 	// ReplyStatus: tells us what the Coordinator wants us to do
 	//
 	// -1: no more tasks. safely exit
-	//  0: tasks exist but can't be assigned yet. wait and ask again
-	//  1: task is assigned. check other fields of struct for more info
+	//  0: there are more tasks pending. ask immediately
+	//  1: tasks exist but can't be assigned yet. wait and ask again
+	//  2: task is assigned. check other fields of struct for more info
+	//  3: coordinator timed out  waiting for us to complete. discard files
 	//
 	ReplyStatus int
 
@@ -94,6 +97,16 @@ type AssignTaskReply struct {
 	// valid when the TaskType == Reduce 
 	//
 	ReduceWorkerNum int
+
+	//
+	// ReduceBuckets: total number of buckets to divide reduce tasks into
+	//
+	ReduceBuckets int
+
+	//
+	// CompletedMapWorkers: these are the prefixes of all completed map workers
+	//
+	CompletedMapWorkers []int
 }
 
 
@@ -111,9 +124,9 @@ type TaskCompleteArgs struct {
 	TaskType int
 	
 	//
-	// MapWorkerNum: tells the Coordinator which Map worker has completed
+	// MapFilename: tells the Coordinator which Map worker has completed
 	//
-	MapWorkerNum int
+	MapFilename string
 
 	//
 	// ReduceWorkerNum: tells the Coordinator which Reduce worker has completed
@@ -125,6 +138,12 @@ type TaskCompleteArgs struct {
 	// task that is completed
 	//
 	TaskId int
+
+	//
+	// TaskSuceeded: tells the Coordinator whether the worker
+	// successfully completed the task or not.
+	//
+	TaskSucceeded bool
 }
 
 type TaskCompleteReply struct {
