@@ -5,11 +5,11 @@ My solutions to labs for MIT 6.824 / 6.5840
 
 This is an ongoing effort, and will be updated from time to time.
 
-Lab 1: Map Reduce
-Status: Completed
+Lab 1: Map Reduce <br>
+[Status: Completed]
 
-Lab 2A: Raft Leader Election
-Status: Completed
+Lab 2A: Raft Leader Election <br>
+[Status: Completed]
 
-Lab 2B: Log
-Status: Ongoing
+Lab 2B: Log <br>
+[Status: Ongoing]
