@@ -90,10 +90,12 @@ const (
 
 //
 // Prints out a log message prefixed with raft id and current term
+// Since this function accesses currentTerm, it assumes that the
+// caller has held the mutex lock rf.mu
 //
 func (rf *Raft) logFunc (message string, args interface{}) {
 
-	log.Printf("[Id: %d, cTerm: %d]: " + message + ": %v\n", rf.me, rf.currentTerm, args)
+	log.Printf("[Id:%d, cTerm:%d]: "+message+":%v\n", rf.me, rf.currentTerm, args)
 
 }
 
@@ -270,6 +272,9 @@ func (rf *Raft) Kill() {
 	atomic.StoreInt32(&rf.dead, 1)
 	// Your code here, if desired.
 	rf.mu.Lock()
+	
+	// reset the election timer to prevent dead
+	// servers from firing their election timers
 	rf.resetElectionTimer = true
 	rf.mu.Unlock()
 }
@@ -318,9 +323,9 @@ func (rf *Raft) ticker() {
 				rf.currentTerm++
 				rf.currentState = RF_CANDIDATE
 				rf.votedFor = rf.me
-				sendingTerm := rf.currentTerm		
-				rf.logFunc("Starting Election. Old Term", (rf.currentTerm - 1))
-				rf.logFunc("Starting Election. New Term", rf.currentTerm)
+				sendingTerm := rf.currentTerm
+				rf.logFunc("Starting Election. Old Term", sendingTerm-1)
+				rf.logFunc("Starting Election. New Term", sendingTerm)
 				rf.mu.Unlock()
 				go rf.startElection(sendingTerm)
 			}
@@ -474,7 +479,7 @@ func (rf *Raft) dispatchRequestVotes (sendingTerm int) bool {
 			}
 			
 			pendingVotes--
-			log.Printf("[Id: %d, cTerm: %d]: Pending votes: %d\n", me, currentTerm, pendingVotes)
+			log.Printf("[Id:%d, cTerm:%d]: Pending votes:%d\n", me, currentTerm, pendingVotes)
 			
 		default:
 			continue
@@ -760,12 +765,12 @@ func (rf *Raft) sendAppendEntries(server int, sendingTerm int, args *AppendEntri
 	me := rf.me
 
 	if sendingTerm != rf.currentTerm {
-		log.Printf("[Id: %d, cTerm: %d]: Received stale AppendEntries response from peer: %d, stale term: %d\n", me, currentTerm, server, sendingTerm)
+		log.Printf("[Id:%d, cTerm:%d]: Received stale AppendEntries response from peer:%d, stale term:%d\n", me, currentTerm, server, sendingTerm)
 		rf.mu.Unlock()
 		return
 	}
 	
-	log.Printf("[Id: %d, cTerm: %d]: AppendEntries reply received from peer: %d, success: %v, reply: %v\n", me, currentTerm, server, ok, *reply)
+	log.Printf("[Id:%d, cTerm:%d]: AppendEntries reply received from peer:%d, success:%v, reply:%v\n", me, currentTerm, server, ok, *reply)
 
 	var wasLeader bool = false
 	if ok {
@@ -777,6 +782,10 @@ func (rf *Raft) sendAppendEntries(server int, sendingTerm int, args *AppendEntri
 				wasLeader = true
 			}
 		}
+
+		// TODO: count the number of sendAppendEntries
+		// to determine when it's safe to commit the log
+		
 	}
 
 	rf.mu.Unlock()
@@ -898,7 +907,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	}
 	log.SetOutput(logfile)
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
-	log.Printf("Logging Raft to custom file: %s\n\n\n", LOG_FILE)
+	log.Printf("Logging Raft to custom file: %s\n\n", LOG_FILE)
 	
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
